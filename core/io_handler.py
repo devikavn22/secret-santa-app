@@ -1,0 +1,56 @@
+import csv
+import io
+from typing import List, Dict
+from core.models import Employee
+
+class CSVHandler:
+    """Handles parsing and validation of file streams inside the application framework."""
+    
+    @staticmethod
+    def read_employees_from_string(content: str) -> List[Employee]:
+        if not content.strip():
+            raise ValueError("The provided employee CSV file is empty.")
+            
+        employees = []
+        seen_emails = set()
+        f = io.StringIO(content)
+        reader = csv.DictReader(f)
+        
+        required_fields = {"Employee_Name", "Employee_EmailID"}
+        if not reader.fieldnames or not required_fields.issubset(set(reader.fieldnames)):
+            raise ValueError("Invalid format. CSV must contain 'Employee_Name' and 'Employee_EmailID' headers.")
+
+        for idx, row in enumerate(reader, start=2):
+            name = row.get("Employee_Name", "").strip()
+            email = row.get("Employee_EmailID", "").strip().lower()
+            
+            if not name or not email:
+                raise ValueError(f"Row {idx} contains invalid data. Missing Name or Email ID.")
+            if email in seen_emails:
+                raise ValueError(f"Row {idx} violation: Duplicate email identity found for '{email}'.")
+                
+            seen_emails.add(email)
+            employees.append(Employee(name, email))
+            
+        return employees
+
+    @staticmethod
+    def read_past_assignments_from_string(content: str) -> Dict[str, str]:
+        past_map = {}
+        if not content or not content.strip():
+            return past_map
+
+        f = io.StringIO(content)
+        reader = csv.DictReader(f)
+        
+        required = {"Employee_EmailID", "Secret_Child_EmailID"}
+        if not reader.fieldnames or not required.issubset(set(reader.fieldnames)):
+            return past_map
+
+        for row in reader:
+            emp_email = row.get("Employee_EmailID", "").strip().lower()
+            child_email = row.get("Secret_Child_EmailID", "").strip().lower()
+            if emp_email and child_email:
+                past_map[emp_email] = child_email
+                
+        return past_map
